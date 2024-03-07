@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\TelegramBotController;
+use App\Http\Controllers\ChannelBotController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
+|
+*/
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+
+Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
+
+Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
+
+Route::get('/check-subscription', [ChannelBotController::class, 'checkSubscription']);
+
+Route::post('/check-subscription', [ChannelBotController::class, 'checkSubscription']);
