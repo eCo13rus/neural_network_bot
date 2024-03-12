@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TelegramBotController;
-use App\Http\Controllers\ChannelBotController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +22,3 @@ Route::get('/', function () {
 Route::get('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
 
 Route::post('/telegram-webhook', [TelegramBotController::class, 'processingWebhook']);
-
-Route::get('/check-subscription', [ChannelBotController::class, 'checkSubscription']);
-
-Route::post('/check-subscription', [ChannelBotController::class, 'checkSubscription']);

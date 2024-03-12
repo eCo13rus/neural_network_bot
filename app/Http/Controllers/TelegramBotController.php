@@ -4,31 +4,69 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
+use App\Services\TelegramBotService;
+use App\Services\UserInteractionService;
+use App\Models\NeuralNetwork;
 
 class TelegramBotController extends Controller
 {
+    protected $telegramBotService;
+    protected $userInteractionService;
+
+    public function __construct(TelegramBotService $telegramBotService, UserInteractionService $userInteractionService)
+    {
+        $this->telegramBotService = $telegramBotService;
+        $this->userInteractionService = $userInteractionService;
+    }
+
     public function processingWebhook(Request $request)
     {
-        $data = $request->all(); // Получаем данные запроса
+        Log::info('Обработка запроса', ['request' => $request->all()]);
+        $update = json_decode($request->getContent(), true);
 
-        TelegramFacade::commandsHandler(true);
+        if (isset($update['message'])) {
+            $message = $update['message'];
+            $text = $message['text'] ?? '';
+            $chatId = $message['chat']['id'];
+            $telegramUserId = $message['from']['id'];
 
-        // Проверяем, является ли обновление сообщением от пользователя в чате
-        if (isset($data['message'])) {
-            $chatId = $data['message']['chat']['id']; // Извлекаем идентификатор чата из сообщения
-            Log::info("Сообщение из чат-бота: Идентификатор чата: {$chatId}", $data); // Добавляем в лог информацию о том, что это сообщение из чат-бота
+            switch ($text) {
+                case '/start':
+                    if ($telegramUserId) {
+                        $this->userInteractionService->showMainMenu($chatId, $telegramUserId);
+                        Log::info('Показано главное меню', ['telegramUserId' => $telegramUserId]);
+                    }
+                    break;
+                case 'Выбрать нейросеть 🔍':
+                    $this->userInteractionService->chooseNeuralNetwork($chatId);
+                    Log::info('Показан выбор нейросети', ['telegramUserId' => $telegramUserId]);
+                    break;
+                case 'Назад ◀️':
+                    if ($telegramUserId) {
+                        $this->userInteractionService->showMainMenu($chatId, $telegramUserId);
+                        Log::info('Возвращение в главное меню', ['telegramUserId' => $telegramUserId]);
+                    }
+                    break;
+                case 'Мой баланс          💰':
+                    if ($telegramUserId) {
+                        $this->userInteractionService->showUserBalance($chatId, $telegramUserId);
+                        Log::info('Показан баланс пользователя', ['telegramUserId' => $telegramUserId]);
+                    }
+                    break;
+                case 'История операций 📋':
+                    if ($telegramUserId) {
+                        $this->userInteractionService->showUserTransactions($chatId, $telegramUserId);
+                        Log::info('Показана история операций пользователя', ['telegram_id' => $telegramUserId]);
+                    }
+                    break;
+                default:
+                    $messageId = $message['message_id'];
+                    // Если текст не соответствует названию нейросети, обрабатываем его как запрос к выбранной нейросети
+                    $this->telegramBotService->handleMessage($chatId, $text,  $messageId);
+                    Log::info('Обработка запроса к нейросети', ['chatId' => $chatId, 'text' => $text]);
+                    break;
+            }
         }
-        // Проверяем, является ли обновление сообщением из канала
-        elseif (isset($data['channel_post'])) {
-            $chatId = $data['channel_post']['chat']['id']; // Извлекаем идентификатор канала из сообщения канала
-            Log::info("Сообщение из ТГ канала: Идентификатор канала: {$chatId}", $data); // Добавляем в лог информацию о том, что это сообщение из ТГ канала
-        } else {
-            Log::warning('Полученные данные не содержат идентификатора чата.', $data);
-        }
-
-        return response()->json([
-            'status' => 'success',
-        ]);
+        return response()->json(['status' => 'success']);
     }
 }

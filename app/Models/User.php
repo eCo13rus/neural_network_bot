@@ -22,7 +22,9 @@ class User extends Authenticatable
         'email',
         'password',
         'telegram_id',
-        'is_subscribed',
+        'balance',
+        'created_at',
+        'updated_at',
     ];
 
     /**
@@ -44,4 +46,29 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function requess()
+    {
+        return $this->hasMany(Request::class);
+    }
+
+    public function transaction()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function userSettinig()
+    {
+        return $this->hasOne(UserSetting::class);
+    }
+
+    public function userState()
+    {
+        return $this->hasOne(UserState::class);
+    }
 }
