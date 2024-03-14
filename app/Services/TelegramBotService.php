@@ -50,15 +50,6 @@ class TelegramBotService
 
         $neuralNetwork = NeuralNetwork::where('name', $networkName)->first();
 
-        if (!$neuralNetwork) {
-            Log::error('Нейросеть не найдена', ['name' => $networkName]);
-            TelegramFacade::sendMessage([
-                'chat_id' => $chatId,
-                'text' => "Нейросеть не найдена.",
-            ]);
-            return;
-        }
-
         $messageText = "<strong>Вы выбрали: " . htmlspecialchars($neuralNetwork->name) . "</strong>.\n\n";
         $messageText .= "<em>" . htmlspecialchars($neuralNetwork->description) . "</em>\n\n⬇️Можете сделать запрос⬇️";
 
@@ -125,9 +116,9 @@ class TelegramBotService
     }
 
     // Метод для обработки запросов пользователя к выбранной нейросети
-    protected function handleUserQuery(int $chatId, string $queryText, NeuralNetwork $neuralNetwork): void
+    protected function handleUserQuery(int $chatId, string $prompt, NeuralNetwork $neuralNetwork): void
     {
-        Log::info('Начало обработки запроса пользователя', ['chatId' => $chatId, 'queryText' => $queryText, 'neuralNetwork' => $neuralNetwork->name]);
+        Log::info('Начало обработки запроса пользователя', ['chatId' => $chatId, 'queryText' => $prompt, 'neuralNetwork' => $neuralNetwork->name]);
 
         $neuralNetworkService = NeuralNetworkServiceFactory::create($neuralNetwork->name);
 
@@ -140,7 +131,7 @@ class TelegramBotService
             return;
         }
 
-        $responseText = $neuralNetworkService->handleRequest($queryText, $chatId);
+        $responseText = $neuralNetworkService->handleRequest($prompt, $chatId);
 
         Log::info('Получен ответ от сервиса нейросети', ['responseText' => $responseText]);
 
@@ -170,6 +161,7 @@ class TelegramBotService
 
         // Проверка на соответствие сообщения имени одной из нейросетей
         $neuralNetworks = NeuralNetwork::pluck('name')->toArray();
+
         if (in_array($messageText, $neuralNetworks)) {
             // Если сообщение соответствует имени нейросети
             $this->handleNeuralNetworkSelection($chatId, $messageText);
@@ -184,15 +176,6 @@ class TelegramBotService
             }
 
             $neuralNetwork = NeuralNetwork::find($settings->neural_network_text_id);
-
-            if (!$neuralNetwork) {
-                Log::error('Нейросеть не найдена', ['neural_network_id' => $settings->neural_network_text_id]);
-                TelegramFacade::sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => "Ошибка: выбранная нейросеть не найдена.",
-                ]);
-                return;
-            }
 
             // Обрабатываем запрос к нейросети
             $this->handleUserQuery($chatId, $messageText, $neuralNetwork);

@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Services\TelegramBotService;
 use App\Services\UserInteractionService;
-use App\Models\NeuralNetwork;
 
 class TelegramBotController extends Controller
 {
@@ -30,6 +29,8 @@ class TelegramBotController extends Controller
             $chatId = $message['chat']['id'];
             $telegramUserId = $message['from']['id'];
 
+            Log::info('В $text и chatId', ['text' => $text, 'chatId' => $text]);
+
             switch ($text) {
                 case '/start':
                     if ($telegramUserId) {
@@ -47,7 +48,7 @@ class TelegramBotController extends Controller
                         Log::info('Возвращение в главное меню', ['telegramUserId' => $telegramUserId]);
                     }
                     break;
-                case 'Мой баланс          💰':
+                case 'Мой баланс 💰':
                     if ($telegramUserId) {
                         $this->userInteractionService->showUserBalance($chatId, $telegramUserId);
                         Log::info('Показан баланс пользователя', ['telegramUserId' => $telegramUserId]);
@@ -60,10 +61,9 @@ class TelegramBotController extends Controller
                     }
                     break;
                 default:
-                    $messageId = $message['message_id'];
-                    // Если текст не соответствует названию нейросети, обрабатываем его как запрос к выбранной нейросети
-                    $this->telegramBotService->handleMessage($chatId, $text,  $messageId);
-                    Log::info('Обработка запроса к нейросети', ['chatId' => $chatId, 'text' => $text]);
+                    // Обрабатываем запрос к выбранной нейросети
+                    $this->telegramBotService->handleMessage($chatId, $text);
+                    Log::info('Лог из контроллера', ['chatId' => $chatId, 'text' => $text]);
                     break;
             }
         }

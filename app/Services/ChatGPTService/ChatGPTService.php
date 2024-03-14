@@ -64,9 +64,9 @@ class ChatGPTService implements NeuralNetworkServiceInterface
     }
 
     // Обработка запрос от ChatGPT
-    public function handleRequest(string $question, int $chatId): string
+    public function handleRequest(string $prompt, int $chatId): string
     {
-        $response = $this->queryChatGPTApi($question, $chatId);
+        $response = $this->queryChatGPTApi($prompt, $chatId);
 
         try {
             $responseText = isset($response['choices'][0]['message']['content'])
