@@ -9,10 +9,21 @@ use App\Services\UserInteractionService;
 
 class TelegramBotController extends Controller
 {
+    protected $commandHandlers = [
+        '/start'                         => 'showMainMenu',
+        'Выбрать нейросеть 🔍'           => 'chooseNeuralNetwork',
+        'Нейросеть для текста'          => ['showNeuralNetworksByCategory', 'generates text'],
+        'Нейросети для изображений'     => ['showNeuralNetworksByCategory', 'generates images'],
+        'Нейросеть для озвучки текста'  => ['showNeuralNetworksByCategory', 'text-to-speech'],
+        'Назад к категориям ◀️'         => 'chooseNeuralNetwork',
+        'Назад ◀️'                      => 'showMainMenu',
+        'Мой баланс 💰'                  => 'showUserBalance',
+        'История операций 📋'            => 'showUserTransactions',
+        'Пополнить баланс 💳'            => 'replenishBalance',
+    ];
+
     protected $userService;
     protected $userInteractionService;
-
-    protected $handledUpdates = [];
 
     public function __construct(UserService $userService, UserInteractionService $userInteractionService)
     {
@@ -20,9 +31,33 @@ class TelegramBotController extends Controller
         $this->userInteractionService = $userInteractionService;
     }
 
+    // Обработчик входящих команд от Telegram.
+    protected function handleCommand($chatId, $text, $telegramUserId)
+    {
+        Log::info('Команда', ['$text' => $text]);
+        
+        if (isset($this->commandHandlers[$text])) {
+            $handler = $this->commandHandlers[$text];
+
+            if (is_array($handler)) {
+                // Если обработчик требует дополнительные параметры
+                $method = $handler[0];
+                $this->userInteractionService->$method($chatId, $handler[1]);
+            } else {
+                // Вызов метода без дополнительных параметров
+                $this->userInteractionService->$handler($chatId, $telegramUserId);
+            }
+        } else {
+            // Обрабатываем запрос к выбранной нейросети или другую логику по умолчанию
+            $this->userService->handleMessage($chatId, $text);
+        }
+    }
+
+    // Обрабатывает входящий вебхук от Telegram, получает данные и направляет на обработку команд.
     public function processingWebhook(Request $request)
     {
         Log::info('Обработка запроса', ['request' => $request->all()]);
+
         $update = json_decode($request->getContent(), true);
 
         if (isset($update['message'])) {
@@ -31,50 +66,10 @@ class TelegramBotController extends Controller
             $chatId = $message['chat']['id'];
             $telegramUserId = $message['from']['id'];
 
-            Log::info('В $text и chatId', ['text' => $text, 'chatId' => $text]);
-
-            switch ($text) {
-                case '/start':
-                    if ($telegramUserId) {
-                        $this->userInteractionService->showMainMenu($chatId, $telegramUserId);
-                        Log::info('Показано главное меню', ['telegramUserId' => $telegramUserId]);
-                    }
-                    break;
-                case 'Выбрать нейросеть 🔍':
-                    $this->userInteractionService->chooseNeuralNetwork($chatId);
-                    Log::info('Показан выбор нейросети', ['telegramUserId' => $telegramUserId]);
-                    break;
-                case 'Назад ◀️':
-                    if ($telegramUserId) {
-                        $this->userInteractionService->showMainMenu($chatId, $telegramUserId);
-                        Log::info('Возвращение в главное меню', ['telegramUserId' => $telegramUserId]);
-                    }
-                    break;
-                case 'Мой баланс 💰':
-                    if ($telegramUserId) {
-                        $this->userInteractionService->showUserBalance($chatId, $telegramUserId);
-                        Log::info('Показан баланс пользователя', ['telegramUserId' => $telegramUserId]);
-                    }
-                    break;
-                case 'История операций 📋':
-                    if ($telegramUserId) {
-                        $this->userInteractionService->showUserTransactions($chatId, $telegramUserId);
-                        Log::info('Показана история операций пользователя', ['telegram_id' => $telegramUserId]);
-                    }
-                    break;
-                case 'Пополнить баланс 💳':
-                    if ($telegramUserId) {
-                        $this->userInteractionService->replenishBalance($chatId); // Вызов метода заглушки
-                        Log::info('Попытка пополнения баланса', ['telegramUserId' => $telegramUserId]);
-                    }
-                    break;
-                default:
-                    // Обрабатываем запрос к выбранной нейросети
-                    $this->userService->handleMessage($chatId, $text);
-                    //Log::info('Лог из контроллера', ['chatId' => $chatId, 'text' => $text]);
-                    break;
-            }
+            // Использование нового метода для обработки команд
+            $this->handleCommand($chatId, $text, $telegramUserId);
         }
+
         return response()->json(['status' => 'success']);
     }
 }

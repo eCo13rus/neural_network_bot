@@ -116,17 +116,37 @@ class UserInteractionService
     // Выводит список нейросетей
     public function chooseNeuralNetwork(int $chatId): void
     {
-        $neuralNetworks = $this->getNeuralNetworks();
+        // Категории нейросетей
+        $keyboard = [
+            ['Нейросеть для текста'],
+            ['Нейросети для изображений'],
+            ['Нейросеть для озвучки текста'],
+            ['Назад ◀️']
+        ];
 
-        // Создаем кнопки для каждой нейросети, используя названия из $neuralNetworks
-        $buttons = array_map(function ($network) {
-            return ['text' => $network['name']];
-        }, $neuralNetworks);
+        $replyKeyboardMarkup = json_encode([
+            'keyboard' => $keyboard,
+            'resize_keyboard' => true,
+            'one_time_keyboard' => false,
+        ]);
 
-        // Добавляем кнопку "Назад"
-        $backButton = ['text' => 'Назад ◀️'];
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => "Выбери категорию нейросетей:",
+            'reply_markup' => $replyKeyboardMarkup,
+        ]);
+        Log::info('Показан список категорий нейросетей');
+    }
 
-        $buttons[] = $backButton;
+    public function showNeuralNetworksByCategory(int $chatId, string $categoryType): void
+    {
+        $neuralNetworks = NeuralNetwork::where('type', $categoryType)->get();
+
+        $buttons = $neuralNetworks->map(function ($network) {
+            return ['text' => $network->name];
+        })->toArray();
+
+        $buttons[] = ['text' => 'Назад к категориям ◀️'];
 
         $keyboard = array_chunk($buttons, 2);
 
@@ -141,12 +161,7 @@ class UserInteractionService
             'text' => "Выбери нейросеть:",
             'reply_markup' => $replyKeyboardMarkup,
         ]);
-        Log::info('Показан списко нейросетей', ['neuralNetworks' => $neuralNetworks,]);
-    }
 
-    // Получаем список нейросетей
-    protected function getNeuralNetworks(): array
-    {
-        return NeuralNetwork::all(['name', 'slug', 'description'])->toArray();
+        Log::info('Показан список нейросетей для категории', ['category' => $categoryType]);
     }
 }
