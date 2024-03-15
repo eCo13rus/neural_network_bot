@@ -35,7 +35,6 @@ class UserInteractionService
             'one_time_keyboard' => false, // Клавиатура останется открытой после использования
         ]);
 
-        // Отправляем только клавиатуру без дополнительного текстового сообщения
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
             'text' => "Выбери действие из меню:",
@@ -63,6 +62,19 @@ class UserInteractionService
         ]);
 
         Log::info('Баланс пользователя показан', ['telegramUserId' => $telegramUserId, 'balance' => $balance]);
+    }
+
+    // Пополнение баланса
+    public function replenishBalance(int $chatId): void
+    {
+        $message = "В разработке.";
+
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => $message,
+        ]);
+
+        Log::info('Пользователь попытался пополнить баланс', ['chat_id' => $chatId]);
     }
 
     // Для вывода транзацкий
@@ -130,7 +142,6 @@ class UserInteractionService
             'reply_markup' => $replyKeyboardMarkup,
         ]);
         Log::info('Показан списко нейросетей', ['neuralNetworks' => $neuralNetworks,]);
-
     }
 
     // Получаем список нейросетей

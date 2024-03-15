@@ -71,4 +71,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserState::class);
     }
+
+    public function messageHistories()
+    {
+        return $this->hasMany(MessageHistory::class);
+    }
 }

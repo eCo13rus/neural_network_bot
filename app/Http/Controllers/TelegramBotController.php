@@ -4,17 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Services\TelegramBotService;
+use App\Services\UserService\UserService;
 use App\Services\UserInteractionService;
 
 class TelegramBotController extends Controller
 {
-    protected $telegramBotService;
+    protected $userService;
     protected $userInteractionService;
 
-    public function __construct(TelegramBotService $telegramBotService, UserInteractionService $userInteractionService)
+    protected $handledUpdates = [];
+
+    public function __construct(UserService $userService, UserInteractionService $userInteractionService)
     {
-        $this->telegramBotService = $telegramBotService;
+        $this->userService = $userService;
         $this->userInteractionService = $userInteractionService;
     }
 
@@ -60,10 +62,16 @@ class TelegramBotController extends Controller
                         Log::info('Показана история операций пользователя', ['telegram_id' => $telegramUserId]);
                     }
                     break;
+                case 'Пополнить баланс 💳':
+                    if ($telegramUserId) {
+                        $this->userInteractionService->replenishBalance($chatId); // Вызов метода заглушки
+                        Log::info('Попытка пополнения баланса', ['telegramUserId' => $telegramUserId]);
+                    }
+                    break;
                 default:
                     // Обрабатываем запрос к выбранной нейросети
-                    $this->telegramBotService->handleMessage($chatId, $text);
-                    Log::info('Лог из контроллера', ['chatId' => $chatId, 'text' => $text]);
+                    $this->userService->handleMessage($chatId, $text);
+                    //Log::info('Лог из контроллера', ['chatId' => $chatId, 'text' => $text]);
                     break;
             }
         }

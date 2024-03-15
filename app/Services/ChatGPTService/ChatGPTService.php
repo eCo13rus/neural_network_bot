@@ -6,6 +6,9 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use App\Contracts\NeuralNetworkServiceInterface;
+use App\Models\MessageHistory;
+use App\Models\User;
+use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 
 class ChatGPTService implements NeuralNetworkServiceInterface
 {
@@ -19,9 +22,32 @@ class ChatGPTService implements NeuralNetworkServiceInterface
     }
 
     // Запрос к ChatGPT
-    public function queryChatGPTApi(string $question, int $chatId): array
+    public function queryChatGPTApi(string $prompt, int $chatId): array
     {
-        Log::info("Выполняется запрос к gen-api.ru", ['question' => $question, 'chatId' => $chatId]);
+        Log::info("Выполняется запрос к gen-api.ru", ['question' => $prompt, 'chatId' => $chatId]);
+
+        // Извлечение истории сообщений пользователя
+        $user = User::where('telegram_id', $chatId)->firstOrFail();
+        $historyEntries = MessageHistory::where('user_id', $user->id)->get();
+
+        $messages = [];
+
+        foreach ($historyEntries as $entry) {
+            // Фильтрация сообщений с пустым содержимым
+            if (!empty($entry->message_text)) {
+                $messages[] = [
+                    'role' => $entry->is_from_user ? 'user' : 'assistant',
+                    'content' => $entry->message_text
+                ];
+            }
+        }
+
+        // Добавление текущего запроса пользователя в массив сообщений
+        if (!empty($prompt)) {
+            $messages[] = ['role' => 'user', 'content' => $prompt];
+        }
+
+        Log::info("История в queryChatGPTApi", ['messages' => $messages, 'history' => $historyEntries]);
 
         try {
             $response = $this->client->post(
@@ -32,12 +58,7 @@ class ChatGPTService implements NeuralNetworkServiceInterface
                         'Accept' => 'application/json',
                     ],
                     'json' => [
-                        'messages' => [
-                            [
-                                'role' => 'user',
-                                'content' => $question
-                            ]
-                        ],
+                        'messages' => $messages,
                         'is_sync' => true,
                     ],
                 ]
@@ -51,21 +72,22 @@ class ChatGPTService implements NeuralNetworkServiceInterface
         } catch (RequestException $e) {
             Log::error('Ошибка при запросе к gen-api.ru: ' . $e->getMessage());
 
-            Log::error('Детали ошибки запроса', [
-                'request' => $e->getRequest() ? (string) $e->getRequest()->getBody() : 'пустой боди',
-                'response' => $e->hasResponse() ? (string) $e->getResponse()->getBody() : 'пусто ответ',
-            ]);
-
-            return ([
+            return [
                 'error' => 'Ошибка при запросе к ChatGPT.',
                 'details' => $e->getMessage()
-            ]);
+            ];
         }
     }
 
-    // Обработка запрос от ChatGPT
+    // Обработка запроса от ChatGPT
     public function handleRequest(string $prompt, int $chatId): string
     {
+        // Отправляем действие "печатает" перед началом обработки
+        TelegramFacade::sendChatAction([
+            'chat_id' => $chatId,
+            'action' => 'typing',
+        ]);
+
         $response = $this->queryChatGPTApi($prompt, $chatId);
 
         try {
