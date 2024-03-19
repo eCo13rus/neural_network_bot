@@ -9,6 +9,8 @@ use App\Contracts\NeuralNetworkServiceInterface;
 use App\Models\MessageHistory;
 use App\Models\User;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
+use Illuminate\Support\Collection;
+use App\Models\UserSetting;
 
 class ChatGPTService implements NeuralNetworkServiceInterface
 {
@@ -26,14 +28,52 @@ class ChatGPTService implements NeuralNetworkServiceInterface
     {
         Log::info("Выполняется запрос к gen-api.ru", ['question' => $prompt, 'chatId' => $chatId]);
 
-        // Извлечение истории сообщений пользователя
-        $user = User::where('telegram_id', $chatId)->firstOrFail();
-        $historyEntries = MessageHistory::where('user_id', $user->id)->get();
+        $user = User::where('telegram_id', $chatId)->first();
+        
+        $userSettings = UserSetting::where('user_id', $user->id)->first();
+        
+        $contextLimit = $userSettings ? $userSettings->context_characters_count : 0;
 
+        Log::info('Колличество контекста', ['contextLimit' => $contextLimit]);
+
+        $historyEntries = $this->getUserMessageHistory($user->id);
+        
+        $messages = $this->formatMessagesForRequest($historyEntries, $prompt, $contextLimit);
+
+        Log::info('Контекст для запроса', ['messages' => $messages]);
+        
+        return $this->makeRequestToChatGPTApi($messages);
+    }
+
+    // Извлекает историю сообщений пользователя.
+    protected function getUserMessageHistory(int $userId): Collection
+    {
+        return MessageHistory::where('user_id', $userId)->get();
+    }
+
+    // Обрезает массив сообщений до заданного лимита символов, сохраняя последние сообщения.
+    protected function limitMessagesByCharacters(array $messages, int $limit): array
+    {
+        $totalLength = 0;
+        $limitedMessages = [];
+
+        // Проходимся по массиву сообщений с конца, чтобы сохранить последние сообщения
+        foreach (array_reverse($messages) as $message) {
+            $messageLength = mb_strlen($message['content']);
+            if ($totalLength + $messageLength > $limit) break;
+            $totalLength += $messageLength;
+            array_unshift($limitedMessages, $message); // Добавляем сообщение в начало массива
+        }
+
+        return $limitedMessages;
+    }
+
+    //Формирует массив сообщений для запроса, включая текущий запрос пользователя.
+    protected function formatMessagesForRequest(Collection $historyEntries, string $prompt, int $contextLimit): array
+    {
         $messages = [];
 
         foreach ($historyEntries as $entry) {
-            // Фильтрация сообщений с пустым содержимым
             if (!empty($entry->message_text)) {
                 $messages[] = [
                     'role' => $entry->is_from_user ? 'user' : 'assistant',
@@ -42,13 +82,22 @@ class ChatGPTService implements NeuralNetworkServiceInterface
             }
         }
 
-        // Добавление текущего запроса пользователя в массив сообщений
+        if ($contextLimit > 0) {
+            $messages = $this->limitMessagesByCharacters($messages, $contextLimit);
+        } elseif ($contextLimit === 0) {
+            $messages = [];
+        }
+
         if (!empty($prompt)) {
             $messages[] = ['role' => 'user', 'content' => $prompt];
         }
 
-        Log::info("История в queryChatGPTApi", ['messages' => $messages, 'history' => $historyEntries]);
+        return $messages;
+    }
 
+    // Отправляет запрос к API ChatGPT и возвращает ответ.
+    protected function makeRequestToChatGPTApi(array $messages): array
+    {
         try {
             $response = $this->client->post(
                 'https://api.gen-api.ru/api/v1/networks/chat-gpt-4-turbo',
@@ -65,13 +114,11 @@ class ChatGPTService implements NeuralNetworkServiceInterface
             );
 
             $body = json_decode((string) $response->getBody(), true);
-
             Log::info("Успешный ответ от gen-api.ru", ['body' => $body]);
 
             return $body['output'] ?? $body;
         } catch (RequestException $e) {
             Log::error('Ошибка при запросе к gen-api.ru: ' . $e->getMessage());
-
             return [
                 'error' => 'Ошибка при запросе к ChatGPT.',
                 'details' => $e->getMessage()
