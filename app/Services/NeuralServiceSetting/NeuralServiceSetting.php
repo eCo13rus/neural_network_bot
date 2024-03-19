@@ -32,8 +32,8 @@ class NeuralServiceSetting
 
         TelegramFacade::sendMessage([
             'chat_id' => $chatId,
-            'parse_mode' => 'HTML',
             'text' => $messageText,
+            'parse_mode' => 'HTML',
         ]);
 
         // Обновляем настройки, какую нейронку выбрал пользователь

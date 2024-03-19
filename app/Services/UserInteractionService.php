@@ -116,7 +116,7 @@ class UserInteractionService
     // Выводит список нейросетей
     public function chooseNeuralNetwork(int $chatId): void
     {
-        // Категории нейросетей
+        // Кнопки категорий нейросетей
         $keyboard = [
             ['Нейросеть для текста'],
             ['Нейросети для изображений'],
@@ -138,6 +138,7 @@ class UserInteractionService
         Log::info('Показан список категорий нейросетей');
     }
 
+    // Отображает нейросети по категориям
     public function showNeuralNetworksByCategory(int $chatId, string $categoryType): void
     {
         $neuralNetworks = NeuralNetwork::where('type', $categoryType)->get();
@@ -146,7 +147,12 @@ class UserInteractionService
             return ['text' => $network->name];
         })->toArray();
 
-        $buttons[] = ['text' => 'Назад к категориям ◀️'];
+        // Добавляем кнопки "Настройки" и "Назад к категориям" в конец списка
+        $buttons = array_merge($buttons, [[
+            'text' => 'Настройки ⚙️'
+        ], [
+            'text' => 'Назад к категориям ◀️'
+        ]]);
 
         $keyboard = array_chunk($buttons, 2);
 
@@ -163,5 +169,63 @@ class UserInteractionService
         ]);
 
         Log::info('Показан список нейросетей для категории', ['category' => $categoryType]);
+    }
+
+    // Отображает меню настроек для пользователя
+    public function showSettingsMenu(int $chatId, int $telegramUserId): void
+    {
+        // Поиск пользователя и его настроек
+        $user = User::where('telegram_id', $telegramUserId)->first();
+
+        if (!$user) {
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'Произошла ошибка. Пользователь не найден.',
+            ]);
+            return;
+        }
+
+        $userSettings = $user->userSetting()->first();
+
+        if (!$userSettings || (!$userSettings->neural_network_text_id && !$userSettings->neural_network_image_id && !$userSettings->neural_network_tts_id)) {
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => "Пожалуйста, сначала выберите нейросеть.",
+            ]);
+            return;
+        }
+
+        // Устанавливаем состояние пользователя
+        $this->setUserState($user->id, 'entering_characters');
+
+        $currentCount = $userSettings ? $userSettings->context_characters_count : 'не установлено';
+
+        $message = "Текущее количество символов контекста: <strong>{$currentCount}</strong>.\n\n" .
+            "В настройках вы можете определить, сколько последних символов из ваших сообщений бот будет учитывать для контекста ответа.\n\n" .
+            "Введите нужное количество символов для контекста или оставьте текущее (0, чтобы не использовать контекст):";
+
+        TelegramFacade::sendMessage([
+            'chat_id' => $chatId,
+            'text' => "<em>{$message}</em>",
+            'parse_mode' => 'HTML',
+        ]);
+    }
+
+    // Устанавливает текущее состояние пользователя.
+    public function setUserState(int $userId, string $state): void
+    {
+        // Используем user_id из найденного пользователя
+        UserState::updateOrCreate(
+            ['user_id' => $userId],
+            ['current_state' => $state]
+        );
+    }
+
+    //Получает текущее состояние пользователя.
+    public function getUserState(int $userId): string
+    {
+        $userState = UserState::where('user_id', $userId)->first();
+
+        return $userState ? $userState->current_state : 'default';
     }
 }

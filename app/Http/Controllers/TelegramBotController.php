@@ -16,6 +16,7 @@ class TelegramBotController extends Controller
         'Нейросети для изображений'     => ['showNeuralNetworksByCategory', 'generates images'],
         'Нейросеть для озвучки текста'  => ['showNeuralNetworksByCategory', 'text-to-speech'],
         'Назад к категориям ◀️'         => 'chooseNeuralNetwork',
+        'Настройки ⚙️'                   => 'showSettingsMenu',
         'Назад ◀️'                      => 'showMainMenu',
         'Мой баланс 💰'                  => 'showUserBalance',
         'История операций 📋'            => 'showUserTransactions',
@@ -48,7 +49,7 @@ class TelegramBotController extends Controller
                 $this->userInteractionService->$handler($chatId, $telegramUserId);
             }
         } else {
-            // Обрабатываем запрос к выбранной нейросети или другую логику по умолчанию
+            // Обрабатываем запрос к выбранной нейросети
             $this->userService->handleMessage($chatId, $text);
         }
     }

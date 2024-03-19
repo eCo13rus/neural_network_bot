@@ -62,7 +62,7 @@ class User extends Authenticatable
         return $this->hasMany(Transaction::class);
     }
 
-    public function userSettinig()
+    public function userSetting()
     {
         return $this->hasOne(UserSetting::class);
     }
