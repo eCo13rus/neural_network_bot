@@ -30,6 +30,8 @@ class UserService
 
         $neuralNetworkService = NeuralNetworkServiceFactory::create($neuralNetwork->name);
 
+        Log::info('Выбрана нейросеть', ['neuralNetworkService' => $neuralNetworkService]);
+
         if (!$neuralNetworkService) {
             Log::warning('Сервис для обработки запросов к нейросети не найден', ['network_name' => $neuralNetwork->name]);
             TelegramFacade::sendMessage([
@@ -39,21 +41,29 @@ class UserService
             return;
         }
 
-        // Запрос к нейросети
-        $responseText = $neuralNetworkService->handleRequest($prompt, $chatId);
-
         $user = User::where('telegram_id', $chatId)->first();
 
-        // Сохраняем входящее сообщение пользователя и ответ нейросети
-        $this->saveMessage($user->id, $prompt, true);
-        $this->saveMessage($user->id, $responseText, false);
+        // Сохраняем входящее сообщение пользователя
+        $this->saveMessage($user->id, $prompt, true, $neuralNetwork->id);
 
-        Log::info('Получен ответ от сервиса нейросети', ['responseText' => $responseText]);
+        // Ответ ожидания
+        $responseContent = $neuralNetworkService->handleRequest($prompt, $chatId);
 
-        TelegramFacade::sendMessage([
-            'chat_id' => $chatId,
-            'text' => $responseText,
-        ]);
+        if ($responseContent !== null && !empty($responseContent)) {
+
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $responseContent,
+            ]);
+        } else {
+            // Ответ не получен или не содержит необходимых данных
+            $errorMessage = "Извините, произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.";
+            Log::error('Ответ от сервиса нейросети не получен или не содержит необходимых данных', ['chatId' => $chatId, 'response' => $responseContent]);
+            TelegramFacade::sendMessage([
+                'chat_id' => $chatId,
+                'text' => $errorMessage,
+            ]);
+        }
     }
 
     // Метод для обработки входящих сообщений от пользователя
@@ -111,7 +121,21 @@ class UserService
             return;
         }
 
-        $neuralNetwork = NeuralNetwork::find($userSettings->neural_network_text_id);
+        // Определяем, какой тип нейросети выбрал пользователь (для упрощения примера, предполагаем, что это текстовый запрос)
+        $networkId = $userSettings->neural_network_text_id ?? $userSettings->neural_network_image_id;
+
+        if (!$networkId) {
+            TelegramFacade::sendMessage(['chat_id' => $chatId, 'text' => "Ошибка: выбранная нейросеть не найдена."]);
+            return;
+        }
+
+        $neuralNetwork = NeuralNetwork::find($networkId);
+        if (!$neuralNetwork) {
+            Log::error('Нейросеть не найдена', ['networkId' => $networkId]);
+            TelegramFacade::sendMessage(['chat_id' => $chatId, 'text' => "Ошибка: выбранная нейросеть не найдена."]);
+            return;
+        }
+
         $this->handleUserQuery($chatId, $messageText, $neuralNetwork);
     }
 
@@ -148,13 +172,14 @@ class UserService
     }
 
     // Сохраняет сообщение пользователя и ответ нейросети в историю.
-    protected function saveMessage(int $userId, string $message, bool $isFromUser): void
+    public function saveMessage(int $userId, string $message, bool $isFromUser, ?int $neuralHistoryNetworkId = null): void
     {
         if (!empty($message)) {
             MessageHistory::create([
                 'user_id' => $userId,
                 'message_text' => $message,
                 'is_from_user' => $isFromUser ? 1 : 0,
+                'neural_history_network_id' => $neuralHistoryNetworkId,
             ]);
         }
     }

@@ -20,30 +20,40 @@ class ChatGPTService implements NeuralNetworkServiceInterface
     public function __construct()
     {
         $this->client = new Client();
-        $this->apiKey = env('CHATGPT_API_KEY');
+        $this->apiKey = env('API_KEY');
     }
 
-    // Запрос к ChatGPT
+    // Запрос к ChatGPT уже с тоговыми настройками юзера
     public function queryChatGPTApi(string $prompt, int $chatId): array
     {
         Log::info("Выполняется запрос к gen-api.ru", ['question' => $prompt, 'chatId' => $chatId]);
 
         $user = User::where('telegram_id', $chatId)->first();
-        
+
+        if (!$user) {
+            Log::error('Пользователь не найден', ['chatId' => $chatId]);
+            return ['error' => 'Пользователь не найден.'];
+        }
+
         $userSettings = UserSetting::where('user_id', $user->id)->first();
-        
+
         $contextLimit = $userSettings ? $userSettings->context_characters_count : 0;
 
-        Log::info('Колличество контекста', ['contextLimit' => $contextLimit]);
+        Log::info('Количество контекста', ['contextLimit' => $contextLimit]);
 
         $historyEntries = $this->getUserMessageHistory($user->id);
-        
+
         $messages = $this->formatMessagesForRequest($historyEntries, $prompt, $contextLimit);
 
         Log::info('Контекст для запроса', ['messages' => $messages]);
-        
-        return $this->makeRequestToChatGPTApi($messages);
+
+        // Инициация асинхронного запроса
+        $this->makeRequestToChatGPTApi($messages, $chatId);
+
+        // Возврат информации о статусе инициации запроса
+        return ['status' => 'processing', 'message' => 'Запрос обрабатывается, ожидайте ответ.'];
     }
+
 
     // Извлекает историю сообщений пользователя.
     protected function getUserMessageHistory(int $userId): Collection
@@ -57,11 +67,22 @@ class ChatGPTService implements NeuralNetworkServiceInterface
         $totalLength = 0;
         $limitedMessages = [];
 
-        // Проходимся по массиву сообщений с конца, чтобы сохранить последние сообщения
         foreach (array_reverse($messages) as $message) {
-            $messageLength = mb_strlen($message['content']);
-            if ($totalLength + $messageLength > $limit) break;
-            $totalLength += $messageLength;
+            if (is_string($message['content'])) {
+                $contentLength = mb_strlen($message['content']);
+            } elseif (is_array($message['content'])) {
+                // Преобразуем массив в строку, чтобы проверить его длину
+                $contentLength = mb_strlen(implode(" ", $message['content']));
+            } elseif (is_object($message['content']) && property_exists($message['content'], 'request_id')) {
+                // Если content является объектом с request_id, обрабатываем его как строку
+                $contentLength = mb_strlen((string) $message['content']->request_id);
+            } else {
+                // Если тип content не поддерживается, пропускаем его
+                continue;
+            }
+
+            if ($totalLength + $contentLength > $limit) break;
+            $totalLength += $contentLength;
             array_unshift($limitedMessages, $message); // Добавляем сообщение в начало массива
         }
 
@@ -96,10 +117,12 @@ class ChatGPTService implements NeuralNetworkServiceInterface
     }
 
     // Отправляет запрос к API ChatGPT и возвращает ответ.
-    protected function makeRequestToChatGPTApi(array $messages): array
+    protected function makeRequestToChatGPTApi(array $messages, int $chatId): void
     {
+        $callbackUrl = env('TELEGRAM_URL') . "/chat-gpt-callback/" . $chatId;
+
         try {
-            $response = $this->client->post(
+            $this->client->post(
                 'https://api.gen-api.ru/api/v1/networks/chat-gpt-4-turbo',
                 [
                     'headers' => [
@@ -108,25 +131,24 @@ class ChatGPTService implements NeuralNetworkServiceInterface
                     ],
                     'json' => [
                         'messages' => $messages,
-                        'is_sync' => true,
+                        'callback_url' => $callbackUrl,
+                        'is_sync' => false, // Убедись, что запрос отправляется асинхронно
                     ],
                 ]
             );
 
-            $body = json_decode((string) $response->getBody(), true);
-            Log::info("Успешный ответ от gen-api.ru", ['body' => $body]);
-
-            return $body['output'] ?? $body;
+            Log::info("Запрос на обработку отправлен", ['chatId' => $chatId]);
         } catch (RequestException $e) {
-            Log::error('Ошибка при запросе к gen-api.ru: ' . $e->getMessage());
-            return [
-                'error' => 'Ошибка при запросе к ChatGPT.',
-                'details' => $e->getMessage()
-            ];
+            Log::error('Ошибка при запросе к gen-api.ru: ' . $e->getMessage(), ['chatId' => $chatId]);
+            // Здесь можно отправить сообщение об ошибке через Telegram, если это необходимо
         }
     }
 
-    // Обработка запроса от ChatGPT
+    public function sendToTelegram(int $chatId, string $response): void
+    {
+    }
+
+    // Обработка ответа от ChatGPT
     public function handleRequest(string $prompt, int $chatId): string
     {
         // Отправляем действие "печатает" перед началом обработки
@@ -136,15 +158,8 @@ class ChatGPTService implements NeuralNetworkServiceInterface
         ]);
 
         $response = $this->queryChatGPTApi($prompt, $chatId);
+        Log::info("Ответ в response в handleRequest ", ['chatId' => $response]);
 
-        try {
-            $responseText = isset($response['choices'][0]['message']['content'])
-                ? $response['choices'][0]['message']['content'] : 'Извините, не удалось получить ответ от ChatGPT.';
-
-            return $responseText;
-        } catch (\Exception $e) {
-            Log::error('Error handling ChatGPT request', ['exception' => $e->getMessage()]);
-            return 'Извините, произошла ошибка при обработке вашего запроса.';
-        }
+        return "Ваш запрос обрабатывается, ожидайте ответ.";
     }
 }

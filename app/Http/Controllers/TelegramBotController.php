@@ -60,6 +60,8 @@ class TelegramBotController extends Controller
         Log::info('Обработка запроса', ['request' => $request->all()]);
 
         $update = json_decode($request->getContent(), true);
+        Log::info('Обработка update', ['update' => $update]);
+
 
         if (isset($update['message'])) {
             $message = $update['message'];
@@ -67,7 +69,6 @@ class TelegramBotController extends Controller
             $chatId = $message['chat']['id'];
             $telegramUserId = $message['from']['id'];
 
-            // Использование нового метода для обработки команд
             $this->handleCommand($chatId, $text, $telegramUserId);
         }
 

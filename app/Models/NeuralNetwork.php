@@ -30,4 +30,9 @@ class NeuralNetwork extends Model
     {
         return $this->hasMany(UserSetting::class, 'neural_network_image_id');
     }
+
+    public function messageHistories()
+    {
+        return $this->hasMany(MessageHistory::class, 'neural_history_network_id');
+    }
 }

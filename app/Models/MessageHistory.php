@@ -15,6 +15,7 @@ class MessageHistory extends Model
         'user_id',
         'message_text',
         'is_from_user',
+        'neural_history_network_id',
         'created_at',
         'updated_at',
     ];
@@ -22,5 +23,10 @@ class MessageHistory extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+    
+    public function neuralNetwork()
+    {
+        return $this->belongsTo(NeuralNetwork::class, 'neural_history_network_id');
     }
 }
