@@ -30,8 +30,6 @@ class UserService
 
         $neuralNetworkService = NeuralNetworkServiceFactory::create($neuralNetwork->name);
 
-        Log::info('Выбрана нейросеть', ['neuralNetworkService' => $neuralNetworkService]);
-
         if (!$neuralNetworkService) {
             Log::warning('Сервис для обработки запросов к нейросети не найден', ['network_name' => $neuralNetwork->name]);
             TelegramFacade::sendMessage([
@@ -119,7 +117,7 @@ class UserService
             return;
         }
 
-        // Определяем, какой тип нейросети выбрал пользователь (для упрощения примера, предполагаем, что это текстовый запрос)
+        // Определяем, какой тип нейросети выбрал пользователь
         $networkId = $userSettings->neural_network_text_id ??
             $userSettings->neural_network_image_id ??
             $userSettings->neural_network_tts_id;

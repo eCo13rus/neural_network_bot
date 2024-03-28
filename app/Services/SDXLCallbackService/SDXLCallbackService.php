@@ -80,6 +80,7 @@ class SDXLCallbackService
 
         // Создаем экземпляр InputFile из URL изображения
         $photo = InputFile::create($imageUrl);
+        
         TelegramFacade::sendPhoto([
             'chat_id' => $chatId,
             'photo' => $photo,
