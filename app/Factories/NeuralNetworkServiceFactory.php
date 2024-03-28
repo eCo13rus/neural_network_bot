@@ -5,6 +5,8 @@ namespace App\Factories;
 use App\Services\ChatGPTService\ChatGPTService;
 use App\Services\SDXLService\SDXLService;
 use App\Contracts\NeuralNetworkServiceInterface;
+use App\Services\TTSService\TTSService;
+
 
 class NeuralNetworkServiceFactory
 {
@@ -15,6 +17,8 @@ class NeuralNetworkServiceFactory
                 return new ChatGPTService();
             case 'SDXL':
                 return new SDXLService();
+            case 'TTS-HD':
+                return new TTSService();
             default:
                 return null;
         }

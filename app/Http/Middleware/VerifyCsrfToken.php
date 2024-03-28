@@ -15,5 +15,6 @@ class VerifyCsrfToken extends Middleware
         '/telegram-webhook',
         'dalle-callback/*',
         'chat-gpt-callback/*',
+        'tts-callback/*',
     ];
 }

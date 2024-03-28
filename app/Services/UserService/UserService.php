@@ -69,8 +69,6 @@ class UserService
     // Метод для обработки входящих сообщений от пользователя
     public function handleMessage(int $chatId, string $messageText): void
     {
-        Log::info('Обработка входящего сообщения от пользователя', ['chatId' => $chatId, 'messageText' => $messageText]);
-
         $user = $this->findUserByTelegramId($chatId);
         if (!$user) return;
 
@@ -122,7 +120,9 @@ class UserService
         }
 
         // Определяем, какой тип нейросети выбрал пользователь (для упрощения примера, предполагаем, что это текстовый запрос)
-        $networkId = $userSettings->neural_network_text_id ?? $userSettings->neural_network_image_id;
+        $networkId = $userSettings->neural_network_text_id ??
+            $userSettings->neural_network_image_id ??
+            $userSettings->neural_network_tts_id;
 
         if (!$networkId) {
             TelegramFacade::sendMessage(['chat_id' => $chatId, 'text' => "Ошибка: выбранная нейросеть не найдена."]);

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TelegramBotController;
 use App\Services\SDXLCallbackService\SDXLCallbackService;
 use App\Services\ChatGPTCallbackService\ChatGPTCallbackService;
+use App\Services\TTSCallbackService\TTSCallbackService;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,3 +33,7 @@ Route::post('/dalle-callback/{chat_id}', [SDXLCallbackService::class, 'processSD
 Route::get('/chat-gpt-callback/{chatId}', [ChatGPTCallbackService::class, 'processChatGPTCallback'])->name('chat_gpt.callback');
 
 Route::post('/chat-gpt-callback/{chatId}', [ChatGPTCallbackService::class, 'processChatGPTCallback'])->name('chat_gpt.callback');
+
+Route::get('/tts-callback/{chatId}', [TTSCallbackService::class, 'proccessTTSCallback'])->name('tts.callback');
+
+Route::post('/tts-callback/{chatId}', [TTSCallbackService::class, 'proccessTTSCallback'])->name('tts.callback');

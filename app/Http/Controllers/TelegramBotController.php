@@ -60,8 +60,6 @@ class TelegramBotController extends Controller
         Log::info('Обработка запроса', ['request' => $request->all()]);
 
         $update = json_decode($request->getContent(), true);
-        Log::info('Обработка update', ['update' => $update]);
-
 
         if (isset($update['message'])) {
             $message = $update['message'];

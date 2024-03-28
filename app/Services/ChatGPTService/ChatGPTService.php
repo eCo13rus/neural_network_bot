@@ -132,7 +132,7 @@ class ChatGPTService implements NeuralNetworkServiceInterface
                     'json' => [
                         'messages' => $messages,
                         'callback_url' => $callbackUrl,
-                        'is_sync' => false, // Убедись, что запрос отправляется асинхронно
+                        'is_sync' => false,
                     ],
                 ]
             );

@@ -6,21 +6,9 @@ use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Laravel\Facades\Telegram as TelegramFacade;
 use Telegram\Bot\FileUpload\InputFile;
 use Illuminate\Http\Request;
-use App\Services\Telegram\QuizService\QuizService;
-use App\Models\User;
-use App\Services\Telegram\ServiceCheckSubscription\ServiceCheckSubscription;
-use App\Models\UserState;
-use App\Services\SDXLService\SDXLService;
 
 class SDXLCallbackService
 {
-    protected $sdxlService;
-
-    public function __construct(SDXLService $sdxlService)
-    {
-        $this->sdxlService = $sdxlService;
-    }
-
     // Обрабатывает колбэк от SDXL API
     public function processSDXLCallback(Request $request, int $chatId)
     {
