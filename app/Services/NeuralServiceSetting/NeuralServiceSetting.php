@@ -73,6 +73,11 @@ class NeuralServiceSetting
             $settings->user_id = $user->id;
         }
 
+        // Обнуляем все настройки перед установкой новой
+        $settings->neural_network_text_id = null;
+        $settings->neural_network_image_id = null;
+        $settings->neural_network_tts_id = null;
+
         // Обновляем настройки в зависимости от типа нейросети
         switch ($neuralNetwork->type) {
             case 'generates text':
