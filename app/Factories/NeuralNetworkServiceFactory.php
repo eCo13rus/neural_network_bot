@@ -8,6 +8,7 @@ use App\Contracts\NeuralNetworkServiceInterface;
 use App\Services\DalleService\DalleService;
 use App\Services\TTSService\TTSService;
 use Illuminate\Support\Facades\Log;
+use App\Services\MidjourneyService\MidjourneyService;
 
 class NeuralNetworkServiceFactory
 {
@@ -24,6 +25,8 @@ class NeuralNetworkServiceFactory
                 return new TTSService();
             case 'DALL-E 3':
                 return new DalleService();
+            case 'Midjourney':
+                return new MidjourneyService();
             default:
                 return null;
         }

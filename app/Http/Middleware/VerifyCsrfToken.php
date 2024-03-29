@@ -16,6 +16,7 @@ class VerifyCsrfToken extends Middleware
         'sdxl-callback/*',
         'chat-gpt-callback/*',
         'tts-callback/*',
-        'dalle-callback/*'
+        'dalle-callback/*',
+        'midjourney-callback/*',
     ];
 }

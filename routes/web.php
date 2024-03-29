@@ -6,6 +6,7 @@ use App\Services\SDXLCallbackService\SDXLCallbackService;
 use App\Services\ChatGPTCallbackService\ChatGPTCallbackService;
 use App\Services\TTSCallbackService\TTSCallbackService;
 use App\Services\DalleCallBackService\DalleCallBackService;
+use App\Services\MidjourneyCallbackService\MidjourneyCallbackService;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,3 +42,7 @@ Route::post('/tts-callback/{chatId}', [TTSCallbackService::class, 'proccessTTSCa
 Route::get('/dalle-callback/{chatId}', [DalleCallBackService::class, 'proccessDalleCallback'])->name('dalle.callback');
 
 Route::post('/dalle-callback/{chatId}', [DalleCallBackService::class, 'proccessDalleCallback'])->name('dalle.callback');
+
+Route::get('/midjourney-callback/{chatId}', [MidjourneyCallbackService::class, 'proccessMidjourneyCallback'])->name('midjourney.callback');
+
+Route::post('/midjourney-callback/{chatId}', [MidjourneyCallbackService::class, 'proccessMidjourneyCallback'])->name('midjourney.callback');
