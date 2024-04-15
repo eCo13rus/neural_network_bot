@@ -26,7 +26,7 @@ Telegram Bot AI Hub интегрирует передовые нейросети
 ## Технологический стек:
 
 - **PHP 8.2**
-- **Laravel 9.x**
+- **Laravel 10.x**
 - **MySQL**
 - **Ngrok**
 - **Telegram Bot API**
